@@ -15,7 +15,7 @@ const {
   PGStringField, 
   PGDateField,
   PGTestDatabase,
-} = require('./');
+} = require('../');
 
 const PGDATA = process.env.PGDATA || 'example-service-pgdir';
 const PGPORT = '5454';
