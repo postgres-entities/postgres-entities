@@ -1,11 +1,13 @@
 'use strict';
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
 const debug = require('debug')('example-service');
+const cluster = require('cluster');
+const numCPUs = require('os').cpus().length;
 
 const app = express()
 const port = process.env.PORT || 5555;
+
 
 const {
   PGEntityManager,
@@ -14,64 +16,49 @@ const {
   PGIntegerField,
   PGStringField, 
   PGDateField,
-  PGTestDatabase,
 } = require('../');
+
+const {setup} = require('./init-service');
 
 const PGDATA = process.env.PGDATA || 'example-service-pgdir';
 const PGPORT = '5454';
 
-// In order to avoid needing to set up a database locally, we'll use the
-// DBHelper for this test database.  This is included so that the example can
-// be run without having to do any local database setup
-const testDB = new PGTestDatabase({
-  datadir: PGDATA,
-  dbname: 'todo-list',
-  port: PGPORT,
-});
-
-// Each service needs an Entity Manager
-const entityManager = new PGEntityManager({
-  service: 'todo-list',
-  connectionString: process.env.DATABASE_URL || testDB.clientConnectionString(),
-});
-
-// Define the structure of a Todo item entity
-const todoItem = new PGEntity({
-  name: 'todo-item',
-  id: ['todoId'],
-  versions: [{
-    fields: {
-      'todoId': PGStringField,
-      'priority': PGIntegerField,
-      'title': PGStringField,
-      'body': PGStringField,
-      'due': PGDateField,
-    },
-  }],
-  manager: entityManager,
-});
 
 async function main() {
 
-  if (!process.env.DATABASE_URL) {
-    // Only create the database if it doesn't already exist
-    if (!fs.existsSync(testDB.datadir)) {
-      // Initialise and start the Postgres databsae
-      await testDB.configurePostgresDatadir();
-    } 
+  // Determine which connection string to use
+  let connectionString = await setup();
 
-    // Start and initialise the database.  For this simple example
-    // service, we start with a fresh state each execution
-    await testDB.startPostgres();
-    await testDB.initialiseDatabase();
+  // Each service needs an Entity Manager
+  const entityManager = new PGEntityManager({
+    service: 'todo-list',
+    connectionString,
+  });
 
+  // Define the structure of a Todo item entity
+  const todoItem = new PGEntity({
+    name: 'todo-item',
+    id: ['todoId'],
+    versions: [{
+      fields: {
+        'todoId': PGStringField,
+        'priority': PGIntegerField,
+        'title': PGStringField,
+        'body': PGStringField,
+        'due': PGDateField,
+      },
+    }],
+    manager: entityManager,
+  });
 
-    // Create all of the Postgres objects required for this example
-    let superClient = await testDB.getSuperuserClient(true);
-    for (let query of entityManager.psqlCreateQueries) {
-      await superClient.query(query);
-    }
-    await superClient.end();
+  try {
+    // Ensure the schema is created
+    await entityManager.write.runInTx(async tx => {
+      for (let query of entityManager.psqlCreateQueries) {
+        await tx.query(query);
+      }
+    });
+  } catch (err) {
   }
 
   // All bodies should be treated as JSON documents
@@ -189,4 +176,20 @@ async function main() {
   });
 }
 
-main().catch(console.error);
+if (cluster.isMaster) {
+  console.log(`Master ${process.pid} is running`);
+
+  // Fork workers.
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`worker ${worker.process.pid} died`);
+    cluster.fork();
+  });
+} else {
+  main().then(() => {
+    console.log(`Worker ${process.pid} started`);
+  }, console.error);
+}

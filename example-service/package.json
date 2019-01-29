@@ -7,5 +7,11 @@
   "dependencies": {
     "body-parser": "^1.18.3",
     "express": "^4.16.4"
+  },
+  "scripts": {
+    "start": "node service.js",
+    "start-verbose": "POSTGRES_LOG_STDIO=1 DEBUG=\"example-service postgres-entities:*\" yarn start",
+    "load": "node load_runner.js",
+    "perf-runner": "node perf_runner.js"
   }
 }

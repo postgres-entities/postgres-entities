@@ -3,6 +3,11 @@ const uuid = require('uuid');
 
 const http = require('http');
 
+const baseUrl = {
+  hostname: process.env.SVC_HOSTNAME || '127.0.0.1',
+  port: process.env.SVC_PORT || 5555,
+}
+
 function testHeader({msg}) {
   console.log(`PID:${process.pid} starting ${msg}`);
   return process.hrtime.bigint();
@@ -10,13 +15,13 @@ function testHeader({msg}) {
 
 function testFooter({start, n, msg}) {
   let end = process.hrtime.bigint();
-  let duration = Number(end - start) / 1e6;
-  console.log(`PID:${process.pid} completed ${msg} ${n/duration} req/ms`);
+  let duration = Number(end - start) / 1e9;
+  console.log(`PID:${process.pid} completed ${msg} ${n/duration} req/s`);
 }
 
 async function request({method='GET', id, body}) {
   return new Promise((resolve, reject) => {
-    let request = http.request({hostname: '127.0.0.1', port: 5555, path: '/todo/' + id, method}, res => {
+    let request = http.request(Object.assign({path: '/todo/' + id, method}, baseUrl), res => {
       let body = [];
       res.once('error', reject);
       res.on('data', chunk => {
@@ -29,7 +34,7 @@ async function request({method='GET', id, body}) {
         }
         return resolve(body);
       });
-    }); 
+    });
     request.once('error', reject);
     request.setHeader('content-type', 'application/json');
     if (body) {
@@ -41,7 +46,7 @@ async function request({method='GET', id, body}) {
 
 async function main() {
   let concurrent = 25;
-  let n = 1000 * concurrent;
+  let n = 100 * concurrent;
   let completed = 0;
   let uuids = [];
 
