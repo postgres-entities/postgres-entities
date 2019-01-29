@@ -1,0 +1,11 @@
+{
+  "name": "perf-testing",
+  "version": "1.0.0",
+  "main": "perf_runner.js",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4"
+  }
+}
