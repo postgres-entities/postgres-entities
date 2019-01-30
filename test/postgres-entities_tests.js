@@ -317,6 +317,7 @@ describe('Postgres Entities', () => {
         document = await entity.load(document);
 
         await entity.remove(document);
+        await entity.remove(conflictingDocument, {unconditional: true});
       })
 
       it('should support migrations', async () => {
