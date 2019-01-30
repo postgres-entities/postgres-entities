@@ -239,13 +239,19 @@ currently provided by Amazon RDS, Google Cloud SQL, Azure Postgres, Heroku
 Postgres, Fedora Postgres and Debian Postgres.
 
 ### ID Serialisation Format
-Each key is currently serialised as a base64 encoded copy of the json string
-for the exact key object.  For an example, the following code builds the Postgres
-id for an entity with an `id` property of `['taskId']`:
+The ID used in the database is the base64 encoded string value of the fields
+from the document.  The order of fields specified in the PGEntity definition
+is the order of the fields in the id.
+
+This code will generate a valid database id column value for a PGEntity which
+uses an id value of `['name', 'vorname']`:
 
 ```javascript
-id = Buffer.from(JSON.stringify({taskId: 'abcdef1234'})).toString('base64');
+`${Buffer.from('Ford').toString('base64')}_${Buffer.from('John').toString('base64')}`
 ```
+
+This format is used so that the simplist of a single field key has a simple
+mapping to database id, while still supporting composite keys.
 
 # Migration
 Each migration is performed by a function which receives a copy of the field

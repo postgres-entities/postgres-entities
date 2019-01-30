@@ -174,12 +174,11 @@ describe('Postgres Entities', () => {
 
         // String key
         assume(entity.calculateId('John'))
-          .equals(Buffer.from(JSON.stringify({name: 'John'})).toString('base64'));
+          .equals(Buffer.from('John').toString('base64'));
 
         // Object key
         assume(entity.calculateId({'name': 'John'}))
-          .equals(Buffer.from(JSON.stringify({name: 'John'})).toString('base64'));
-
+          .equals(Buffer.from('John').toString('base64'));
       });
 
 
@@ -199,8 +198,15 @@ describe('Postgres Entities', () => {
           }],
         });
 
+        let name64 = Buffer.from('John').toString('base64');
+        let feet64 = Buffer.from('2').toString('base64');
+
         assume(entity.calculateId({'name': 'John', feet: 2}))
-          .equals(Buffer.from(JSON.stringify({name: 'John', feet: 2})).toString('base64'));
+          .equals(`${name64}_${feet64}`);
+
+        assume(() => {entity.calculateId({'name': 'John'})})
+          .throws(/Missing feet/);
+
 
       });
 
