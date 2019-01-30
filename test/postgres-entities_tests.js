@@ -266,11 +266,14 @@ describe('Postgres Entities', () => {
         assume(loadedDocument).has.property('__fields');
 
         // Returning the field values
-        await entity.update(document, doc => {
+        let updateEtag = await entity.update(document, doc => {
           doc.feet = 1;
           doc.atoms = 8n * (27n ** 10n);
           return document;
         });
+
+        assume(updateEtag).is.ok();
+
         loadedDocument = await entity.load(document);
         assume(loadedDocument).has.property('feet', 1);
         assume(loadedDocument).has.property('atoms');
@@ -303,6 +306,17 @@ describe('Postgres Entities', () => {
             throw err;
           }
         }
+
+        let noUpdateEtag = await entity.update(document, doc => {
+          doc.feet = 2;
+          doc.atoms = 8n * (27n ** 10n);
+          return document;
+        }, {updateEtag: false});
+        assume(noUpdateEtag).is.not.ok();
+
+        document = await entity.load(document);
+
+        await entity.remove(document);
       })
 
       it('should support migrations', async () => {
