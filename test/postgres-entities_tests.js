@@ -430,11 +430,16 @@ describe('Postgres Entities', () => {
   });
 
   describe('field type tests', () => {
-    function testField(clazz, {works=[], toDBFails=[], fromDBFails=[]}) {
+    function testField(clazz, {constArgs=[], works=[], toDBFails=[], fromDBFails=[]}) {
       describe(clazz.name, () => {
         for (let work of works) {
           it(`should be true that '${work.toString()}' === toDB(fromDB('${work.toString()}'))`, () => {
             assume(clazz.fromDB(clazz.toDB(work))).deeply.equals(work);
+          });
+
+          it(`should be true that '${work.toString()}' === toDB(fromDB('${work.toString()}')) (instance)`, () => {
+            let fieldInstance = new clazz(...constArgs);
+            assume(fieldInstance.fromDB(fieldInstance.toDB(work))).deeply.equals(work);
           });
         }
 
