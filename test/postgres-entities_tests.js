@@ -172,10 +172,6 @@ describe('Postgres Entities', () => {
           }],
         });
 
-        // String key
-        assume(entity.calculateId('John'))
-          .equals(Buffer.from('John').toString('base64'));
-
         // Object key
         assume(entity.calculateId({'name': 'John'}))
           .equals(Buffer.from('John').toString('base64'));
@@ -250,8 +246,6 @@ describe('Postgres Entities', () => {
           }
         }
 
-        // Ensure the other id versions work
-        await entity.load('John');
         await entity.load({name: 'John'});
 
         let loadedDocument = await entity.load(document);
@@ -372,7 +366,7 @@ describe('Postgres Entities', () => {
 
         // Verify that loaded documents have the hands property
         // with the default value
-        let loadedDocument = await entity.load('John');
+        let loadedDocument = await entity.load({name: 'John'});
         assume(loadedDocument).has.property('hands', 2);
 
         // Now delete the first version so that we can verify that trying to do
@@ -382,7 +376,7 @@ describe('Postgres Entities', () => {
         entity._versions[0] = null;
 
         try {
-          await entity.load('John');
+          await entity.load({name: 'John'});
           return Promise.reject('should fail');
         } catch (err) {
           if (!/Entity version 0 is no longer understood/.test(err.message)) {
@@ -412,7 +406,7 @@ describe('Postgres Entities', () => {
         await runQueries(entity.psqlCreateQueries);
 
         // Persist the migration to version 2
-        loadedDocument = await entity.load('John');
+        loadedDocument = await entity.load({name: 'John'});
         await entity.update(loadedDocument);
 
         // Now we get rid of version 2 since we don't want the PGEntity
@@ -420,7 +414,7 @@ describe('Postgres Entities', () => {
         entity._versions.pop();
 
         try {
-          await entity.load('John');
+          await entity.load({name: 'John'});
           return Promise.reject('should fail');
         } catch (err) {
           if (!/Entity version 2 is too new/.test(err.message)) {
