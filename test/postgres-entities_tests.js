@@ -308,9 +308,13 @@ describe('Postgres Entities', () => {
         }, {updateEtag: false});
         assume(noUpdateEtag).is.not.ok();
 
+        let metadata = await entity.metadata(document);
+
         document = await entity.load(document);
+        assume(metadata).has.property('etag', document.__etag);
 
         await entity.remove(document);
+
         await entity.remove(conflictingDocument, {unconditional: true});
       })
 
