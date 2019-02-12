@@ -15,6 +15,8 @@ const {
   PGIntegerField,
   PGBigIntField,
   PGDateField,
+  PGJSONField,
+  VALID_JSON_FIELD,
 } = require('../lib/postgres-entities');
 
 const {PG} = require('../lib/pg');
@@ -482,6 +484,21 @@ describe('Postgres Entities', () => {
       works: [new Date()],
       toDBFails: ['lkadsjl', new Date().toISOString()],
       fromDBFails: ['lalal'],
+    });
+
+    // The JSON field is a little more complicated than other fields
+    describe('JSON fields', () => {
+      it('validation function when VALID_JSON_FIELD is return', () => {
+        let field = new PGJSONField({validate: () => {return VALID_JSON_FIELD}});
+        assume(field.toDB('john')).deeply.equals('john');
+      });
+
+      it('validation function should throw if VALID_JSON_FIELD is not return', () => {
+        let field = new PGJSONField({validate: () => {return true}});
+        assume(() => {
+          field.toDB('john');
+        }).throws(/Validation return value was unexpected/);
+      });
     });
   });
 });
