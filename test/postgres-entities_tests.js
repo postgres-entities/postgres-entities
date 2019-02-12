@@ -15,6 +15,8 @@ const {
   PGIntegerField,
   PGBigIntField,
   PGDateField,
+  PGTruthyFalsyField,
+  PGBooleanField,
   PGJSONField,
   VALID_JSON_FIELD,
 } = require('../lib/postgres-entities');
@@ -435,18 +437,18 @@ describe('Postgres Entities', () => {
     function testField(clazz, {constArgs=[], works=[], toDBFails=[], fromDBFails=[]}) {
       describe(clazz.name, () => {
         for (let work of works) {
-          it(`should be true that '${work.toString()}' === toDB(fromDB('${work.toString()}'))`, () => {
+          it(`should be true that '${String(work)}' === toDB(fromDB('${String(work)}'))`, () => {
             assume(clazz.fromDB(clazz.toDB(work))).deeply.equals(work);
           });
 
-          it(`should be true that '${work.toString()}' === toDB(fromDB('${work.toString()}')) (instance)`, () => {
+          it(`should be true that '${String(work)}' === toDB(fromDB('${String(work)}')) (instance)`, () => {
             let fieldInstance = new clazz(...constArgs);
             assume(fieldInstance.fromDB(fieldInstance.toDB(work))).deeply.equals(work);
           });
         }
 
         for (let toDBFail of toDBFails) {
-          it(`input should fail for invalid toDB input '${toDBFail.toString()}'`, () => { 
+          it(`input should fail for invalid toDB input '${String(toDBFail)}'`, () => { 
             assume(() => {
               clazz.toDB(toDBFail);
             }).throws(/Field value/);
@@ -454,7 +456,7 @@ describe('Postgres Entities', () => {
         }
 
         for (let fromDBFail of fromDBFails) {
-          it(`input should fail for invalid fromDB input '${fromDBFail.toString()}'`, () => { 
+          it(`input should fail for invalid fromDB input '${String(fromDBFail)}'`, () => { 
             assume(() => {
               clazz.fromDB(fromDBFail);
             }).throws(/Field value/);
@@ -484,6 +486,19 @@ describe('Postgres Entities', () => {
       works: [new Date()],
       toDBFails: ['lkadsjl', new Date().toISOString()],
       fromDBFails: ['lalal'],
+    });
+
+    testField(PGTruthyFalsyField, {
+      works: [true, false],
+    });
+
+    testField(PGBooleanField, {
+      works: [true, false],
+      toDBFails: [undefined, null, NaN, 'true', new Promise(() => {})],
+    });
+
+    testField(PGJSONField, {
+      works: [{}, [], {a:1}, {a:{b:1}}],
     });
 
     // The JSON field is a little more complicated than other fields
