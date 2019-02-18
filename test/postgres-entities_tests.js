@@ -19,6 +19,7 @@ const {
   PGBooleanField,
   PGJSONField,
   VALID_JSON_FIELD,
+  MAX_DOCUMENT_SIZE,
 } = require('../lib/postgres-entities');
 
 const {PG} = require('../lib/pg');
@@ -321,6 +322,40 @@ describe('Postgres Entities', () => {
 
         await entity.remove(conflictingDocument, {unconditional: true});
       })
+
+      it.only('should not be possible to exceed maximum document size', async () => {
+        let entity = new PGEntity({
+          name: 'entity-1',
+          id: 'name',
+          manager,
+          versions: [{
+            fields: {
+              name: PGStringField,
+            },
+            indexes: ['name'],
+          }],
+        });
+
+        let longString;
+
+        // Calculate a document which has a serialization exactly one byte too
+        // many.  There's 12 bytes of JSON encoding overhead in the wrapper:
+        //    '{"name": ""}'.length = 12
+        let document = entity.createDocument({
+          value:{
+            name: Buffer.alloc(MAX_DOCUMENT_SIZE - 11, '💩').toString(),
+          }
+        });
+
+        try {
+          await entity.insert(document);
+          return Promise.reject(new Error('should fail'));
+        } catch (err) {
+          if (!/Document is too large/.test(err.message)) {
+            throw err;
+          }
+        }
+      });
 
       it('should support migrations', async () => {
         let entity = new PGEntity({
