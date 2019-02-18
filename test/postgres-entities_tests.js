@@ -245,7 +245,6 @@ describe('Postgres Entities', () => {
           await entity.insert(document);
           return Promise.reject('should fail');
         } catch (err) {
-          console.dir(err);
           if (err.code !== 'PGEntityAlreadyExistsError') {
             throw err;
           }
@@ -263,6 +262,8 @@ describe('Postgres Entities', () => {
         assume(loadedDocument).has.property('__etag');
         assume(loadedDocument).has.property('__version', 0);
         assume(loadedDocument).has.property('__fields');
+        assume(loadedDocument).has.property('__lastModified');
+        assume(loadedDocument).has.property('__sequence');
 
         // Returning the field values
         let updateEtag = await entity.update(document, doc => {
@@ -323,7 +324,7 @@ describe('Postgres Entities', () => {
         await entity.remove(conflictingDocument, {unconditional: true});
       })
 
-      it.only('should not be possible to exceed maximum document size', async () => {
+      it('should not be possible to exceed maximum document size', async () => {
         let entity = new PGEntity({
           name: 'entity-1',
           id: 'name',
