@@ -18,6 +18,7 @@ const {
   PGTruthyFalsyField,
   PGBooleanField,
   PGJSONField,
+  PGEntityQuery,
   VALID_JSON_FIELD,
   MAX_DOCUMENT_SIZE,
 } = require('../lib/postgres-entities');
@@ -466,6 +467,432 @@ describe('Postgres Entities', () => {
           }
         }
       });
+    });
+
+    describe.only('document stream', () => {
+      let manager;
+      let entity;
+
+      // Just a helper to run the create queries since we'll need to run them
+      // at different times
+      async function runQueries(queries) {
+        let client = await db.getSuperuserClient(true);
+        try {
+          for (let query of queries) {
+            await client.query(query);
+          }
+        } finally {
+          await client.end();
+        }
+      }
+
+      beforeEach(async () => {
+        manager = new PGEntityManager({
+          service: 'streaming',
+          connectionString: db.clientConnectionString(),
+        });
+
+        entity = new PGEntity({
+          name: 'streamed',
+          id: 'field1',
+          manager,
+          versions: [{
+            fields: {
+              field1: PGStringField,
+              field2: PGIntegerField,
+              field3: PGIntegerField,
+              field4: PGIntegerField,
+              field5: PGStringField,
+              datefield: PGDateField,
+            },
+            indexes: ['field1', 'field2', 'field3', 'field4'],
+          }],
+        });
+
+        await runQueries(manager.psqlDropQueries);
+        await runQueries(manager.psqlCreateQueries);
+      });
+
+      afterEach(async () => {
+        await manager.close();
+      });
+
+      async function insertDocuments(num) {
+        for (let i = 0; i < num; i++) {
+          let e = entity.createDocument({
+            value: {
+              field1: 'field1_' + Number(i).toString(),
+              field2: i,
+              field3: i * 2,
+              field4: i * 3,
+              field5: 'hello',
+              datefield: new Date(),
+            }
+          });
+
+          await entity.insert(e);
+        }
+      }
+
+
+      it('should be able to retreive all documents without conditions', async () => {
+        await insertDocuments(20);
+
+        let documents = [];
+
+        await entity.documentStream(document => {
+          documents.push(document);
+          assume(document).has.property('field1');
+          assume(document).has.property('field2');
+          assume(document).has.property('field3');
+          assume(document).has.property('field4');
+          assume(document).has.property('datefield');
+        });
+);
+        assume(documents).has.lengthOf(20);
+      });
+
+      it('should be able to retreive some documents with conditions', async () => {
+        await insertDocuments(20);
+
+        let documents = [];
+
+        await entity.documentStream(document => {
+          documents.push(document);
+          assume(document).has.property('field1', 'field1_5');
+          assume(document).has.property('field2');
+          assume(document).has.property('field3');
+          assume(document).has.property('field4');
+          assume(document).has.property('datefield');
+        }, {queryBuilder: query => {
+          query.compare('field1', PGEntityQuery.comp.eq, 'field1_5'); 
+        }});
+
+        assume(documents).has.lengthOf(1);
+      });
+    });
+
+    describe('pagination', () => {
+      let manager;
+      let entity;
+
+      // Just a helper to run the create queries since we'll need to run them
+      // at different times
+      async function runQueries(queries) {
+        let client = await db.getSuperuserClient(true);
+        try {
+          for (let query of queries) {
+            await client.query(query);
+          }
+        } finally {
+          await client.end();
+        }
+      }
+
+      beforeEach(async () => {
+        manager = new PGEntityManager({
+          service: 'pagination',
+          connectionString: db.clientConnectionString(),
+        });
+
+        entity = new PGEntity({
+          name: 'paginated',
+          id: 'field1',
+          manager,
+          versions: [{
+            fields: {
+              field1: PGStringField,
+              field2: PGIntegerField,
+              field3: PGIntegerField,
+              field4: PGIntegerField,
+              field5: PGStringField,
+              datefield: PGDateField,
+            },
+            indexes: ['field1', 'field2', 'field3', 'field4'],
+          }],
+        });
+
+        await runQueries(manager.psqlDropQueries);
+        await runQueries(manager.psqlCreateQueries);
+      });
+
+      afterEach(async () => {
+        await manager.close();
+      });
+
+      async function insertDocuments(num) {
+        for (let i = 0; i < num; i++) {
+          let e = entity.createDocument({
+            value: {
+              field1: 'field1_' + Number(i).toString(),
+              field2: i,
+              field3: i * 2,
+              field4: i * 3,
+              field5: 'hello',
+              datefield: new Date(),
+            }
+          });
+
+          await entity.insert(e);
+        }
+      }
+
+      it('should be able to retreive all documents without conditions', async () => {
+        await insertDocuments(20);
+
+        let pageCount = 0;
+        let docCount = 0;
+
+        let continuationToken;
+
+        do {
+          let response = await entity.fetchPage({quantity: 2, continuationToken});
+
+          continuationToken = response.continuationToken;
+
+          pageCount++;
+          docCount += response.documents.length;
+
+          if (pageCount < 10) {
+            assume(response.documents).has.lengthOf(2);
+          }
+
+          // Just here to make sure that logs don't get ruined by infinite page fetching
+          assume(pageCount).atmost(11);
+        } while (continuationToken);
+ 
+        assume(pageCount).equals(11);
+      });
+
+      it('should be able to retreive all documents with conditions', async () => {
+        await insertDocuments(20);
+
+        let pageCount = 0;
+        let docCount = 0;
+
+        let continuationToken;
+
+        do {
+          let response = await entity.fetchPage({quantity: 2, continuationToken, queryBuilder: query => {
+            query.compare('field2', PGEntityQuery.comp.gte, 10); 
+          }});
+            
+          continuationToken = response.continuationToken;
+
+          pageCount++;
+          docCount += response.documents.length;
+
+          if (pageCount < 5) {
+            assume(response.documents).has.lengthOf(2);
+          }
+
+          // Just here to make sure that logs don't get ruined by infinite page fetching
+          assume(pageCount).atmost(6);
+        } while (continuationToken);
+ 
+        assume(pageCount).equals(6);
+      });
+
+
+      it('should end pagination when the last page has as many items as are the limit');
+
+    });
+
+    describe.skip('document streaming');
+  });
+
+  describe('pg queries', () => {
+    let entity;
+    let query;
+
+    beforeEach(() => {
+      entity = new PGEntity({
+        name: 'entity-1',
+        id: 'field1',
+        versions: [{
+          fields: {
+            field1: PGStringField,
+            field2: PGStringField,
+            field3: PGStringField,
+            field4: PGStringField,
+            field5: PGStringField,
+            boolfield: PGBooleanField,
+            intfield: PGIntegerField,
+            datefield: PGDateField,
+          },
+          indexes: ['field1', 'field2', 'datefield', 'intfield', 'boolfield'],
+        }],
+      });
+
+      query = new PGEntityQuery(entity);
+    });
+
+    it('should generate a simple select statement for an entity', () => {
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1";');
+    });
+
+    it('should generate a select statement for a single string condition', () => {
+      query.compare('field1', PGEntityQuery.comp.gt, 'value1');
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'field1\')::text > $1;');
+      assume(query.statement.values).deeply.equals(['value1']);
+    });
+
+    it('should generate a select statement for a single date condition', () => {
+      let d = new Date();
+      query.compare('datefield', PGEntityQuery.comp.gt, d);
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > $1;');
+      assume(query.statement.values).deeply.equals([d.toISOString()]);
+    });
+
+    it('should generate a select statement for a single integer condition', () => {
+      query.compare('intfield', PGEntityQuery.comp.gt, 123);
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'intfield\')::integer > $1;');
+      assume(query.statement.values).deeply.equals([123]);
+    });
+
+    it('should generate a select statement for a single boolean condition', () => {
+      query.compare('boolfield', true).and.compare('boolfield', false);
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'boolfield\'::boolean IS TRUE AND (value->>\'boolfield\'::boolean IS FALSE;');
+      assume(query.statement.values).deeply.equals([]);
+    });
+
+    it('should generate a select statement for multiple field conditions', () => {
+      query
+        .compare('field1', PGEntityQuery.comp.eq, 'value1')
+        .and
+        .compare('field2', PGEntityQuery.comp.eq, 'value2');
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'field1\')::text = $1 AND (value->>\'field2\')::text = $2;');
+      assume(query.statement.values).deeply.equals(['value1', 'value2']);
+    });
+
+    it('should generate a select statement for nested field conditions', () => {
+      query
+        .paren
+          .compare('field1', PGEntityQuery.comp.eq, 'value1')
+          .and
+          .compare('field2', PGEntityQuery.comp.eq, 'value2')
+        .close;
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE ( (value->>\'field1\')::text = $1 AND (value->>\'field2\')::text = $2 );');
+      assume(query.statement.values).deeply.equals(['value1', 'value2']);
+    });
+
+    it('should generate a select statement for time field conditions', () => {
+      let value = new Date();
+
+      query.compare('datefield', PGEntityQuery.comp.gt, value, 1, 'day')
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > $1 + interval \'1 day\';');
+      assume(query.statement.values).deeply.equals([value.toISOString()]);
+    
+    });
+
+    it('should generate a select statement for time field conditions relative to now', () => {
+      let value = new Date();
+
+      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW, 1, 'day')
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > now() + interval \'1 day\';');
+      assume(query.statement.values).deeply.equals([]);
+    
+    });
+
+    it('should generate a select statement for non-relative time comparisons', () => {
+      let value = new Date();
+
+      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW)
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > now();');
+      assume(query.statement.values).deeply.equals([]);
+    }); 
+
+    it('should generate a select statement for sequence conditions', () => {
+      query.compareColumn('sequence', PGEntityQuery.comp.gt, 1)
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE "sequence" > $1;');
+      assume(query.statement.values).deeply.equals([1]);
+    });
+
+    it('should generate a select statement for touched conditions', () => {
+      let value = new Date();
+
+      query.compareColumnTime('touched', PGEntityQuery.comp.lte, value);
+
+      assume(query.statement.text)
+        .equals('SELECT * FROM "public"."entity-1" WHERE "touched" <= $1::timestamptz;');
+      assume(query.statement.values).deeply.equals([value]);
+    });
+
+    it('should fail when and is not supported', () => {
+      assume(() => {
+        query.and;
+      }).throws(/Invalid context to use .and/);
+    }); 
+
+    it('should fail when or is not supported', () => {
+      assume(() => {
+        query.or;
+      }).throws(/Invalid context to use .or/);
+    }); 
+
+    it('should fail when closeParen is not supported', () => {
+      assume(() => {
+        query.close;
+      }).throws(/Invalid context to use .close/);
+    }); 
+
+    it('should fail for too many opening parentheses', () => {
+      query.paren.compare('field1', PGEntityQuery.comp.gt, 'value1');
+      assume(() => {
+        query.statement;
+      }).throws(/Cannot generate query with mismatched parentheses/);
+    });
+  
+    it('should fail for too many closing parentheses', () => {
+      assume(() => {
+        query.compare('field2', PGEntityQuery.comp.gt, 'value2').close;
+      }).throws(/Invalid context to use .close/);
+    });
+
+    it('should fail when non-indexed fields are queried', () => {
+      assume(() => {
+        query.compare('field3', PGEntityQuery.comp.gt, 'value1');
+      }).throws(/Cannot set condition for unindexed field/);
+    });
+
+    it('should be able to set a limit', () => {
+      query.limit(10);
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" LIMIT $1;');
+      assume(query.statement.values).deeply.equals(['10']);
+
+      query.limit(20);
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" LIMIT $1;');
+      assume(query.statement.values).deeply.equals(['20']);
+    });
+
+    it('should be able to set ordering conditions', () => {
+      query.orderBySequence();
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" ORDER BY sequence ASC;');
+      assume(query.statement.values).deeply.equals([]);
+
+      query.orderByReverseSequence();
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" ORDER BY sequence DESC;');
+      assume(query.statement.values).deeply.equals([]);
+
+      query.orderByNewestModification();
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" ORDER BY touched DESC;');
+      assume(query.statement.values).deeply.equals([]);
+
+      query.orderByOldestModification();
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" ORDER BY touched ASC;');
+      assume(query.statement.values).deeply.equals([]);
     });
   });
 
