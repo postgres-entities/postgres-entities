@@ -164,4 +164,120 @@ describe('PG', () => {
     assume(result.rows).deeply.equals([{col1: x}]);
   });
 
+  it('should be able to curse over a table', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await subject.curse(SQL`SELECT * FROM test`, row => {
+      rows.push(row.col1); 
+    });
+
+    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+  });
+
+  it.only('should be able to handle a rowFunc which throws', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await assume(async () => {
+      await subject.curse(SQL`SELECT * FROM test`, row => {
+        throw new Error('hi');
+      });
+    }).rejects();
+
+  });
+
+  it.only('should be able to handle a rowFunc which rejects', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await assume(async () => {
+      await subject.curse(SQL`SELECT * FROM test`, async row => {
+        return Promise.reject(new Error('hi'));
+      });
+    }).rejects();
+
+  });
+
+  it('should be able to curse over a table with a batch size', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await subject.curse(SQL`SELECT * FROM test`, row => {
+      rows.push(row.col1); 
+    }, {batchSize:1});
+
+    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+  });
+
+  it('should be able to curse over a table with an async function', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await subject.curse(SQL`SELECT * FROM test`, async row => {
+      return new Promise(resolve => {
+        process.nextTick(() => {
+          rows.push(row.col1);
+          resolve();
+        })
+      });
+    });
+
+    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+  });
+  
+  it('should be able to curse over a table with a sequential async function', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await subject.curse(SQL`SELECT * FROM test`, async row => {
+      return new Promise(resolve => {
+        process.nextTick(() => {
+          rows.push(row.col1);
+          resolve();
+        })
+      });
+    }, {sequential: true});
+
+    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+  });
+  
+  it('should be able to curse over a table with a limit', async () => {
+    await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
+    for (let i = 0; i < 10; i++) {
+      await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
+    }
+
+    let rows = [];
+
+    await subject.curse(SQL`SELECT * FROM test`, row => {
+      rows.push(row.col1)
+    }, {limit: 4});
+
+    assume(rows).deeply.equals([0,1,2,3]);
+  });
 });
