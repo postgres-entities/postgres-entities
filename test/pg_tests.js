@@ -179,7 +179,7 @@ describe('PG', () => {
     assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
   });
 
-  it.only('should be able to handle a rowFunc which throws', async () => {
+  it('should be able to handle a rowFunc which throws', async () => {
     await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
     for (let i = 0; i < 10; i++) {
       await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
@@ -195,7 +195,7 @@ describe('PG', () => {
 
   });
 
-  it.only('should be able to handle a rowFunc which rejects', async () => {
+  it('should be able to handle a rowFunc which rejects', async () => {
     await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
     for (let i = 0; i < 10; i++) {
       await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));

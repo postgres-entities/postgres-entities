@@ -469,7 +469,7 @@ describe('Postgres Entities', () => {
       });
     });
 
-    describe.only('document stream', () => {
+    describe('document stream', () => {
       let manager;
       let entity;
 
@@ -548,7 +548,7 @@ describe('Postgres Entities', () => {
           assume(document).has.property('field4');
           assume(document).has.property('datefield');
         });
-);
+
         assume(documents).has.lengthOf(20);
       });
 
@@ -697,8 +697,6 @@ describe('Postgres Entities', () => {
       it('should end pagination when the last page has as many items as are the limit');
 
     });
-
-    describe.skip('document streaming');
   });
 
   describe('pg queries', () => {
