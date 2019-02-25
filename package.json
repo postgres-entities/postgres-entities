@@ -13,6 +13,20 @@
   "engines": {
     "node": ">=10.0.0"
   },
+  "files": [
+    "yarn.lock",
+    "README.md",
+    "LICENSE",
+    "lib/index.js",
+    "lib/log.js",
+    "lib/pg-test-database.js",
+    "lib/pg.js",
+    "lib/postgres-entities",
+    "test/pg-test-database_tests.js",
+    "test/pg_tests.js",
+    "test/postgres-entities_tests.js",
+    "test/test.sql"
+  ],
   "dependencies": {
     "pg": "^7.8.0",
     "pg-cursor": "^2.0.0",
