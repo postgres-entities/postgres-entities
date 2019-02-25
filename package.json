@@ -1,6 +1,6 @@
 {
   "name": "postgres-entities",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Store JSON documents in Postgres",
   "main": "lib/index.js",
   "repository": "github.com:jhford/postgres-entities",
