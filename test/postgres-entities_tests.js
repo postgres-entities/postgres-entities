@@ -21,7 +21,7 @@ const {
   PGEntityQuery,
   VALID_JSON_FIELD,
   MAX_DOCUMENT_SIZE,
-} = require('../lib/postgres-entities');
+} = require('../');
 
 const {PG} = require('../lib/pg');
 
