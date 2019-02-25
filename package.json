@@ -21,7 +21,7 @@
     "lib/log.js",
     "lib/pg-test-database.js",
     "lib/pg.js",
-    "lib/postgres-entities",
+    "lib/postgres-entities.js",
     "test/pg-test-database_tests.js",
     "test/pg_tests.js",
     "test/postgres-entities_tests.js",
