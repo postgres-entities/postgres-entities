@@ -906,6 +906,15 @@ describe('Postgres Entities', () => {
             let fieldInstance = new clazz(...constArgs);
             assume(fieldInstance.fromDB(fieldInstance.toDB(work))).deeply.equals(work);
           });
+
+          it('should be able to serialize as JSON', () => {
+            JSON.stringify(clazz.toJSON(work));
+          });
+
+          it('should be able to serialize instances as JSON', () => {
+            let fieldInstance = new clazz(...constArgs);
+            JSON.stringify(fieldInstance.toJSON(work));
+          });
         }
 
         for (let toDBFail of toDBFails) {
