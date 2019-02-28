@@ -16,7 +16,7 @@ describe('Postgres Test Database', () => {
     });
 
     it('should run a failing command', async () => {
-      await run({args: ['bash', '-c', 'exit 0']})
+      await run({args: ['bash', '-c', 'exit 0']});
       await assume(run({
         args: ['bash', '-c', 'exit 1'],
       })).rejects();
@@ -33,7 +33,7 @@ describe('Postgres Test Database', () => {
       rimraf(datadir);
       subject = new PGTestDatabase({datadir});
       await subject.configurePostgresDatadir();
-    })
+    });
 
     afterEach(async () => {
       await subject.stopPostgres();

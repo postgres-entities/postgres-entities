@@ -8,7 +8,9 @@
   "license": "MPL-2.0",
   "private": false,
   "scripts": {
-    "test": "mocha"
+    "lint": "eslint --parser babel-eslint lib/*.js test/*.js",
+    "mocha": "mocha",
+    "test": "yarn mocha && yarn lint"
   },
   "engines": {
     "node": ">=10.0.0"
@@ -37,6 +39,8 @@
   },
   "devDependencies": {
     "assume": "^2.1.0",
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.14.1",
     "mocha": "^5.2.0",
     "pino-pretty": "^2.5.0",
     "rimraf": "^2.6.3",

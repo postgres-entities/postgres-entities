@@ -7,10 +7,8 @@ const rimraf = require('rimraf').sync;
 const {PGTestDatabase} = require('../lib/pg-test-database');
 
 const {
-  PGEntityError,
   PGEntityManager,
   PGEntity,
-  PGEntityDocument,
   PGStringField,
   PGIntegerField,
   PGBigIntField,
@@ -23,17 +21,15 @@ const {
   MAX_DOCUMENT_SIZE,
 } = require('../');
 
-const {PG} = require('../lib/pg');
-
 describe('Postgres Entities', () => {
   describe('database tests', () => {
     let datadir;
-    let db; 
+    let db;
 
     before(async function() {
       this.timeout(10 * 1000);
 
-      let datadir = process.env.PGDATA || tmp.tmpNameSync();
+      datadir = process.env.PGDATA || tmp.tmpNameSync();
 
       rimraf(datadir);
 
@@ -91,7 +87,6 @@ describe('Postgres Entities', () => {
 
     describe('entities', () => {
       let manager;
-      let subject;
 
       // Just a helper to run the create queries since we'll need to run them
       // at different times
@@ -162,7 +157,7 @@ describe('Postgres Entities', () => {
         await runQueries(entity.psqlCreateQueries);
       });
 
-      it('should be possible to create a entity with a simple id', async () => {
+      it('should be possible to create a entity with a simple id', () => {
         let entity = new PGEntity({
           name: 'entity-1',
           id: 'name',
@@ -183,8 +178,7 @@ describe('Postgres Entities', () => {
           .equals(Buffer.from('John').toString('base64'));
       });
 
-
-      it('should be possible to create a entity with a composite id', async () => {
+      it('should be possible to create a entity with a composite id', () => {
         let entity = new PGEntity({
           name: 'entity-1',
           id: ['name', 'feet'],
@@ -206,9 +200,8 @@ describe('Postgres Entities', () => {
         assume(entity.calculateId({'name': 'John', feet: 2}))
           .equals(`${name64}_${feet64}`);
 
-        assume(() => {entity.calculateId({'name': 'John'})})
+        assume(() => {entity.calculateId({'name': 'John'});})
           .throws(/Missing feet/);
-
 
       });
 
@@ -231,16 +224,16 @@ describe('Postgres Entities', () => {
         await runQueries(entity.psqlCreateQueries);
 
         let document = entity.createDocument({
-          value:{
+          value: {
             name: 'John',
             feet: 2,
             atoms: 7n * (27n ** 10n),
             birthday: new Date('2010-01-01'),
-          }
+          },
         });
 
         await entity.insert(document);
-        
+
         // Should collide if there's already a document stored there
         try {
           await entity.insert(document);
@@ -317,13 +310,13 @@ describe('Postgres Entities', () => {
 
         let metadata = await entity.metadata(document);
 
-        document = await entity.load(document);
-        assume(metadata).has.property('etag', document.__etag);
+        let newDocument = await entity.load(document);
+        assume(metadata).has.property('etag', newDocument.__etag);
 
-        await entity.remove(document);
+        await entity.remove(newDocument);
 
         await entity.remove(conflictingDocument, {unconditional: true});
-      })
+      });
 
       it('should not be possible to exceed maximum document size', async () => {
         let entity = new PGEntity({
@@ -338,15 +331,13 @@ describe('Postgres Entities', () => {
           }],
         });
 
-        let longString;
-
         // Calculate a document which has a serialization exactly one byte too
         // many.  There's 12 bytes of JSON encoding overhead in the wrapper:
         //    '{"name": ""}'.length = 12
         let document = entity.createDocument({
-          value:{
+          value: {
             name: Buffer.alloc(MAX_DOCUMENT_SIZE - 11, '💩').toString(),
-          }
+          },
         });
 
         try {
@@ -380,12 +371,12 @@ describe('Postgres Entities', () => {
         // Insert a document at version 0 (first) that we'll migrate to version
         // 1 once we've added it
         let document = entity.createDocument({
-          value:{
+          value: {
             name: 'John',
             feet: 2,
             atoms: 7n * (27n ** 10n),
             birthday: new Date('2010-01-01'),
-          }
+          },
         });
 
         await entity.insert(document);
@@ -527,13 +518,12 @@ describe('Postgres Entities', () => {
               field4: i * 3,
               field5: 'hello',
               datefield: new Date(),
-            }
+            },
           });
 
           await entity.insert(e);
         }
       }
-
 
       it('should be able to retreive all documents without conditions', async () => {
         await insertDocuments(20);
@@ -565,7 +555,7 @@ describe('Postgres Entities', () => {
           assume(document).has.property('field4');
           assume(document).has.property('datefield');
         }, {queryBuilder: query => {
-          query.compare('field1', PGEntityQuery.comp.eq, 'field1_5'); 
+          query.compare('field1', PGEntityQuery.comp.eq, 'field1_5');
         }});
 
         assume(documents).has.lengthOf(1);
@@ -630,7 +620,7 @@ describe('Postgres Entities', () => {
               field4: i * 3,
               field5: 'hello',
               datefield: new Date(),
-            }
+            },
           });
 
           await entity.insert(e);
@@ -660,8 +650,9 @@ describe('Postgres Entities', () => {
           // Just here to make sure that logs don't get ruined by infinite page fetching
           assume(pageCount).atmost(11);
         } while (continuationToken);
- 
+
         assume(pageCount).equals(11);
+        assume(docCount).equals(20);
       });
 
       it('should be able to retreive all documents with conditions', async () => {
@@ -674,9 +665,9 @@ describe('Postgres Entities', () => {
 
         do {
           let response = await entity.fetchPage({quantity: 2, continuationToken, queryBuilder: query => {
-            query.compare('field2', PGEntityQuery.comp.gte, 10); 
+            query.compare('field2', PGEntityQuery.comp.gte, 10);
           }});
-            
+
           continuationToken = response.continuationToken;
 
           pageCount++;
@@ -689,10 +680,10 @@ describe('Postgres Entities', () => {
           // Just here to make sure that logs don't get ruined by infinite page fetching
           assume(pageCount).atmost(6);
         } while (continuationToken);
- 
-        assume(pageCount).equals(6);
-      });
 
+        assume(pageCount).equals(6);
+        assume(docCount).equals(10);
+      });
 
       it('should end pagination when the last page has as many items as are the limit');
 
@@ -768,9 +759,9 @@ describe('Postgres Entities', () => {
     it('should generate a select statement for nested field conditions', () => {
       query
         .paren
-          .compare('field1', PGEntityQuery.comp.eq, 'value1')
-          .and
-          .compare('field2', PGEntityQuery.comp.eq, 'value2')
+        .compare('field1', PGEntityQuery.comp.eq, 'value1')
+        .and
+        .compare('field2', PGEntityQuery.comp.eq, 'value2')
         .close;
 
       assume(query.statement.text)
@@ -781,37 +772,33 @@ describe('Postgres Entities', () => {
     it('should generate a select statement for time field conditions', () => {
       let value = new Date();
 
-      query.compare('datefield', PGEntityQuery.comp.gt, value, 1, 'day')
+      query.compare('datefield', PGEntityQuery.comp.gt, value, 1, 'day');
 
       assume(query.statement.text)
         .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > $1 + interval \'1 day\';');
       assume(query.statement.values).deeply.equals([value.toISOString()]);
-    
+
     });
 
     it('should generate a select statement for time field conditions relative to now', () => {
-      let value = new Date();
-
-      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW, 1, 'day')
+      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW, 1, 'day');
 
       assume(query.statement.text)
         .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > now() + interval \'1 day\';');
       assume(query.statement.values).deeply.equals([]);
-    
+
     });
 
     it('should generate a select statement for non-relative time comparisons', () => {
-      let value = new Date();
-
-      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW)
+      query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW);
 
       assume(query.statement.text)
         .equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'datefield\')::timestamptz > now();');
       assume(query.statement.values).deeply.equals([]);
-    }); 
+    });
 
     it('should generate a select statement for sequence conditions', () => {
-      query.compareColumn('sequence', PGEntityQuery.comp.gt, 1)
+      query.compareColumn('sequence', PGEntityQuery.comp.gt, 1);
 
       assume(query.statement.text)
         .equals('SELECT * FROM "public"."entity-1" WHERE "sequence" > $1;');
@@ -832,19 +819,19 @@ describe('Postgres Entities', () => {
       assume(() => {
         query.and;
       }).throws(/Invalid context to use .and/);
-    }); 
+    });
 
     it('should fail when or is not supported', () => {
       assume(() => {
         query.or;
       }).throws(/Invalid context to use .or/);
-    }); 
+    });
 
     it('should fail when closeParen is not supported', () => {
       assume(() => {
         query.close;
       }).throws(/Invalid context to use .close/);
-    }); 
+    });
 
     it('should fail for too many opening parentheses', () => {
       query.paren.compare('field1', PGEntityQuery.comp.gt, 'value1');
@@ -852,7 +839,7 @@ describe('Postgres Entities', () => {
         query.statement;
       }).throws(/Cannot generate query with mismatched parentheses/);
     });
-  
+
     it('should fail for too many closing parentheses', () => {
       assume(() => {
         query.compare('field2', PGEntityQuery.comp.gt, 'value2').close;
@@ -918,7 +905,7 @@ describe('Postgres Entities', () => {
         }
 
         for (let toDBFail of toDBFails) {
-          it(`input should fail for invalid toDB input '${String(toDBFail)}'`, () => { 
+          it(`input should fail for invalid toDB input '${String(toDBFail)}'`, () => {
             assume(() => {
               clazz.toDB(toDBFail);
             }).throws(/Field value/);
@@ -926,7 +913,7 @@ describe('Postgres Entities', () => {
         }
 
         for (let fromDBFail of fromDBFails) {
-          it(`input should fail for invalid fromDB input '${String(fromDBFail)}'`, () => { 
+          it(`input should fail for invalid fromDB input '${String(fromDBFail)}'`, () => {
             assume(() => {
               clazz.fromDB(fromDBFail);
             }).throws(/Field value/);
@@ -968,18 +955,18 @@ describe('Postgres Entities', () => {
     });
 
     testField(PGJSONField, {
-      works: [{}, [], {a:1}, {a:{b:1}}],
+      works: [{}, [], {a: 1}, {a: {b: 1}}],
     });
 
     // The JSON field is a little more complicated than other fields
     describe('JSON fields', () => {
       it('validation function when VALID_JSON_FIELD is return', () => {
-        let field = new PGJSONField({validate: () => {return VALID_JSON_FIELD}});
+        let field = new PGJSONField({validate: () => {return VALID_JSON_FIELD;}});
         assume(field.toDB('john')).deeply.equals('john');
       });
 
       it('validation function should throw if VALID_JSON_FIELD is not return', () => {
-        let field = new PGJSONField({validate: () => {return true}});
+        let field = new PGJSONField({validate: () => {return true;}});
         assume(() => {
           field.toDB('john');
         }).throws(/Validation return value was unexpected/);
