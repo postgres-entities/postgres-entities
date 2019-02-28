@@ -3,9 +3,6 @@
 const assume = require('assume');
 const tmp = require('tmp');
 const rimraf = require('rimraf').sync;
-const fs = require('fs');
-const path = require('path');
-const pg = require('pg');
 
 const {PGTestDatabase} = require('../lib/pg-test-database');
 const {PG, SQL} = require('../lib/pg');
@@ -18,7 +15,7 @@ describe('PG', () => {
   before(async function() {
     this.timeout(10*1000);
 
-    let datadir = process.env.PGDATA || tmp.tmpNameSync();
+    datadir = process.env.PGDATA || tmp.tmpNameSync();
 
     rimraf(datadir);
 
@@ -185,10 +182,8 @@ describe('PG', () => {
       await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
     }
 
-    let rows = [];
-
     await assume(async () => {
-      await subject.curse(SQL`SELECT * FROM test`, row => {
+      await subject.curse(SQL`SELECT * FROM test`, () => {
         throw new Error('hi');
       });
     }).rejects();
@@ -201,11 +196,9 @@ describe('PG', () => {
       await subject.query(SQL`INSERT INTO test`.append(SQL`(col1) VALUES (${i});`));
     }
 
-    let rows = [];
-
     await assume(async () => {
-      await subject.curse(SQL`SELECT * FROM test`, async row => {
-        return Promise.reject(new Error('hi'));
+      await subject.curse(SQL`SELECT * FROM test`, async () => {
+        return await Promise.reject(new Error('hi'));
       });
     }).rejects();
 
@@ -235,7 +228,7 @@ describe('PG', () => {
     let rows = [];
 
     await subject.curse(SQL`SELECT * FROM test`, async row => {
-      return new Promise(resolve => {
+      return await new Promise(resolve => {
         process.nextTick(() => {
           rows.push(row.col1);
           resolve();
@@ -255,7 +248,7 @@ describe('PG', () => {
     let rows = [];
 
     await subject.curse(SQL`SELECT * FROM test`, async row => {
-      return new Promise(resolve => {
+      return await new Promise(resolve => {
         process.nextTick(() => {
           rows.push(row.col1);
           resolve();

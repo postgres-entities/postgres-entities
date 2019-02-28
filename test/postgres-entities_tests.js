@@ -7,10 +7,8 @@ const rimraf = require('rimraf').sync;
 const {PGTestDatabase} = require('../lib/pg-test-database');
 
 const {
-  PGEntityError,
   PGEntityManager,
   PGEntity,
-  PGEntityDocument,
   PGStringField,
   PGIntegerField,
   PGBigIntField,
@@ -23,8 +21,6 @@ const {
   MAX_DOCUMENT_SIZE,
 } = require('../');
 
-const {PG} = require('../lib/pg');
-
 describe('Postgres Entities', () => {
   describe('database tests', () => {
     let datadir;
@@ -33,7 +29,7 @@ describe('Postgres Entities', () => {
     before(async function() {
       this.timeout(10 * 1000);
 
-      let datadir = process.env.PGDATA || tmp.tmpNameSync();
+      datadir = process.env.PGDATA || tmp.tmpNameSync();
 
       rimraf(datadir);
 
@@ -91,7 +87,6 @@ describe('Postgres Entities', () => {
 
     describe('entities', () => {
       let manager;
-      let subject;
 
       // Just a helper to run the create queries since we'll need to run them
       // at different times
@@ -162,7 +157,7 @@ describe('Postgres Entities', () => {
         await runQueries(entity.psqlCreateQueries);
       });
 
-      it('should be possible to create a entity with a simple id', async () => {
+      it('should be possible to create a entity with a simple id', () => {
         let entity = new PGEntity({
           name: 'entity-1',
           id: 'name',
@@ -183,7 +178,7 @@ describe('Postgres Entities', () => {
           .equals(Buffer.from('John').toString('base64'));
       });
 
-      it('should be possible to create a entity with a composite id', async () => {
+      it('should be possible to create a entity with a composite id', () => {
         let entity = new PGEntity({
           name: 'entity-1',
           id: ['name', 'feet'],
@@ -335,8 +330,6 @@ describe('Postgres Entities', () => {
             indexes: ['name'],
           }],
         });
-
-        let longString;
 
         // Calculate a document which has a serialization exactly one byte too
         // many.  There's 12 bytes of JSON encoding overhead in the wrapper:
@@ -659,6 +652,7 @@ describe('Postgres Entities', () => {
         } while (continuationToken);
 
         assume(pageCount).equals(11);
+        assume(docCount).equals(20);
       });
 
       it('should be able to retreive all documents with conditions', async () => {
@@ -688,6 +682,7 @@ describe('Postgres Entities', () => {
         } while (continuationToken);
 
         assume(pageCount).equals(6);
+        assume(docCount).equals(10);
       });
 
       it('should end pagination when the last page has as many items as are the limit');
@@ -786,8 +781,6 @@ describe('Postgres Entities', () => {
     });
 
     it('should generate a select statement for time field conditions relative to now', () => {
-      let value = new Date();
-
       query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW, 1, 'day');
 
       assume(query.statement.text)
@@ -797,8 +790,6 @@ describe('Postgres Entities', () => {
     });
 
     it('should generate a select statement for non-relative time comparisons', () => {
-      let value = new Date();
-
       query.compare('datefield', PGEntityQuery.comp.gt, PGEntityQuery.NOW);
 
       assume(query.statement.text)
