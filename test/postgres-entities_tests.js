@@ -750,7 +750,7 @@ describe('Postgres Entities', () => {
 
     it('should generate a select statement for a single boolean condition', () => {
       query.compare('boolfield', true).and.compare('boolfield', false);
-      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'boolfield\'::boolean IS TRUE AND (value->>\'boolfield\'::boolean IS FALSE;');
+      assume(query.statement.text).equals('SELECT * FROM "public"."entity-1" WHERE (value->>\'boolfield\')::boolean IS TRUE AND (value->>\'boolfield\')::boolean IS FALSE;');
       assume(query.statement.values).deeply.equals([]);
     });
 
