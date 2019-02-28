@@ -8,6 +8,7 @@
   "license": "MPL-2.0",
   "private": false,
   "scripts": {
+    "lint": "eslint lib/* test/*",
     "test": "mocha"
   },
   "engines": {
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "assume": "^2.1.0",
+    "eslint": "^5.14.1",
     "mocha": "^5.2.0",
     "pino-pretty": "^2.5.0",
     "rimraf": "^2.6.3",
