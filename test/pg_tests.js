@@ -12,7 +12,7 @@ const {PG, SQL} = require('../lib/pg');
 
 describe('PG', () => {
   let datadir;
-  let db; 
+  let db;
   let subject;
 
   before(async function() {
@@ -156,7 +156,7 @@ describe('PG', () => {
 
   it('should be able to escape literals', async () => {
     await subject.query('CREATE TABLE test (col1 TEXT PRIMARY KEY);');
-    let x = "'john'); DROP TABLE test;"
+    let x = "'john'); DROP TABLE test;";
     await subject.query(`INSERT INTO test (col1) VALUES (${subject.escapeLiteral(x)});`);
 
     let result = await subject.query('SELECT * FROM test');
@@ -173,10 +173,10 @@ describe('PG', () => {
     let rows = [];
 
     await subject.curse(SQL`SELECT * FROM test`, row => {
-      rows.push(row.col1); 
+      rows.push(row.col1);
     });
 
-    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+    assume(rows).deeply.equals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('should be able to handle a rowFunc which throws', async () => {
@@ -220,10 +220,10 @@ describe('PG', () => {
     let rows = [];
 
     await subject.curse(SQL`SELECT * FROM test`, row => {
-      rows.push(row.col1); 
-    }, {batchSize:1});
+      rows.push(row.col1);
+    }, {batchSize: 1});
 
-    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+    assume(rows).deeply.equals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it('should be able to curse over a table with an async function', async () => {
@@ -239,13 +239,13 @@ describe('PG', () => {
         process.nextTick(() => {
           rows.push(row.col1);
           resolve();
-        })
+        });
       });
     });
 
-    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+    assume(rows).deeply.equals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
-  
+
   it('should be able to curse over a table with a sequential async function', async () => {
     await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
     for (let i = 0; i < 10; i++) {
@@ -259,13 +259,13 @@ describe('PG', () => {
         process.nextTick(() => {
           rows.push(row.col1);
           resolve();
-        })
+        });
       });
     }, {sequential: true});
 
-    assume(rows).deeply.equals([0,1,2,3,4,5,6,7,8,9]);
+    assume(rows).deeply.equals([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
-  
+
   it('should be able to curse over a table with a limit', async () => {
     await subject.query('CREATE TABLE test (col1 INTEGER PRIMARY KEY);');
     for (let i = 0; i < 10; i++) {
@@ -275,9 +275,9 @@ describe('PG', () => {
     let rows = [];
 
     await subject.curse(SQL`SELECT * FROM test`, row => {
-      rows.push(row.col1)
+      rows.push(row.col1);
     }, {limit: 4});
 
-    assume(rows).deeply.equals([0,1,2,3]);
+    assume(rows).deeply.equals([0, 1, 2, 3]);
   });
 });
